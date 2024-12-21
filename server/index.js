@@ -27,6 +27,14 @@ const permissions = [
     'pages_show_list'
 ].join(',');
 
+const METRICS = [
+    'comments',
+    'likes',
+    'ig_reels_video_view_total_time',
+    'ig_reels_aggregated_all_plays_count',
+    'plays'
+].join(',');
+
 app.get('/auth/instagram', (req, res) => {
     try {
         const loginUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${instagramConfig.appId}&redirect_uri=${encodeURIComponent(instagramConfig.redirectUri)}&scope=${encodeURIComponent(permissions)}&response_type=code`;
@@ -56,11 +64,14 @@ app.get('/auth/callback', async (req, res) => {
 
         const accessToken = tokenResponse.data.access_token;
 
+        // Optionally save accessToken for user sessions or debugging
+        console.log('Access Token fetched successfully:', accessToken);
+
         const accountResponse = await axios.get(`${FACEBOOK_GRAPH_API}/me/accounts`, {
-            params: { 
+            params: {
                 access_token: accessToken,
-                fields: 'id,name,instagram_business_account'
-            }
+                fields: 'id,name,instagram_business_account',
+            },
         });
 
         if (!accountResponse.data.data || accountResponse.data.data.length === 0) {
@@ -76,14 +87,14 @@ app.get('/auth/callback', async (req, res) => {
 
         res.json({
             accessToken,
-            igBusinessId
+            igBusinessId,
         });
-        
     } catch (error) {
         console.error('Auth error:', error.response?.data || error.message);
         res.status(500).json({ error: error.response?.data?.error?.message || error.message });
     }
 });
+
 
 app.post('/api/post-metrics', async (req, res) => {
     const { postUrl, accessToken, igBusinessId } = req.body;
@@ -102,7 +113,7 @@ app.post('/api/post-metrics', async (req, res) => {
         const mediaResponse = await axios.get(`${FACEBOOK_GRAPH_API}/${igBusinessId}/media`, {
             params: {
                 access_token: accessToken,
-                fields: 'id,shortcode'
+                fields: 'id,shortcode,thumbnail_url'
             }
         });
 
@@ -115,14 +126,16 @@ app.post('/api/post-metrics', async (req, res) => {
         }
 
         // Fetch specific media metrics
-        const metricsResponse = await axios.get(`${FACEBOOK_GRAPH_API}/${mediaItem.id}`, {
+        const metricsResponse = await axios.get(`${FACEBOOK_GRAPH_API}/${mediaItem.id}/insights`, {
             params: {
                 access_token: accessToken,
-                fields: 'like_count,comments_count,media_type'
+                metric: METRICS,
             }
         });
 
         res.json(metricsResponse.data);
+        console.log(mediaResponse.data);
+        
     } catch (error) {
         console.error('Metrics error:', error.response?.data || error.message);
         res.status(500).json({ error: error.response?.data?.error?.message || 'Failed to fetch post metrics' });
