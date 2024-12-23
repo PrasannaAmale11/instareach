@@ -636,3 +636,366 @@ const OptimizedList = ({ items }) => {
   ));
 };
 ```
+# React Developer Interview Guide
+
+## Core React Concepts
+
+### 1. Question: Explain Virtual DOM and its benefits
+**Answer**: 
+The Virtual DOM is a lightweight copy of the actual DOM. When state changes in a React component:
+1. React creates a new Virtual DOM tree
+2. Compares it with the previous Virtual DOM (diffing)
+3. Calculates minimal number of updates needed
+4. Updates only the changed elements in the real DOM
+
+```javascript
+// Example of how React updates efficiently
+function Counter() {
+  const [count, setCount] = useState(0);
+  
+  return (
+    <div>
+      <h1>Count: {count}</h1>
+      <button onClick={() => setCount(count + 1)}>Increment</button>
+    </div>
+  );
+}
+// Only the count text will be updated, not the entire div or button
+```
+
+### 2. Question: What are controlled vs uncontrolled components?
+**Answer**: 
+- Controlled components: Form elements whose values are controlled by React state
+- Uncontrolled components: Form elements that maintain their own internal state
+
+```javascript
+// Controlled Component
+function ControlledInput() {
+  const [value, setValue] = useState('');
+  
+  return (
+    <input 
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+    />
+  );
+}
+
+// Uncontrolled Component
+function UncontrolledInput() {
+  const inputRef = useRef(null);
+  
+  const handleSubmit = () => {
+    console.log(inputRef.current.value);
+  };
+  
+  return <input ref={inputRef} />;
+}
+```
+
+### 3. Question: Explain React's Component Lifecycle using Hooks
+**Answer**:
+```javascript
+function LifecycleComponent() {
+  // Constructor equivalent
+  const [data, setData] = useState(null);
+
+  // ComponentDidMount
+  useEffect(() => {
+    fetchData();
+    return () => cleanup(); // ComponentWillUnmount
+  }, []);
+
+  // ComponentDidUpdate
+  useEffect(() => {
+    if (data) {
+      console.log('Data updated:', data);
+    }
+  }, [data]);
+
+  return <div>{/* render content */}</div>;
+}
+```
+
+## State Management
+
+### 4. Question: How do you manage global state in React?
+**Answer**: There are several approaches:
+
+1. Context API for simpler applications:
+```javascript
+const ThemeContext = React.createContext();
+
+function ThemeProvider({ children }) {
+  const [theme, setTheme] = useState('light');
+  
+  return (
+    <ThemeContext.Provider value={{ theme, setTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+```
+
+2. Redux for complex applications:
+```javascript
+// reducer.js
+const counterReducer = (state = 0, action) => {
+  switch (action.type) {
+    case 'INCREMENT':
+      return state + 1;
+    default:
+      return state;
+  }
+};
+
+// Component
+function Counter() {
+  const count = useSelector(state => state.counter);
+  const dispatch = useDispatch();
+  
+  return (
+    <button onClick={() => dispatch({ type: 'INCREMENT' })}>
+      Count: {count}
+    </button>
+  );
+}
+```
+
+### 5. Question: How do you optimize React performance?
+**Answer**:
+
+```javascript
+// 1. Use React.memo for component memoization
+const MemoizedComponent = React.memo(function MyComponent(props) {
+  return <div>{props.value}</div>;
+});
+
+// 2. Use useCallback for function memoization
+function SearchComponent() {
+  const [query, setQuery] = useState('');
+  
+  const handleSearch = useCallback((searchTerm) => {
+    setQuery(searchTerm);
+  }, []); // Empty deps array as it doesn't depend on any values
+  
+  return <SearchInput onSearch={handleSearch} />;
+}
+
+// 3. Use useMemo for expensive calculations
+function DataGrid({ data, filter }) {
+  const filteredData = useMemo(() => {
+    return data.filter(item => item.value > filter);
+  }, [data, filter]);
+  
+  return <div>{/* render filtered data */}</div>;
+}
+```
+
+## Error Handling
+
+### 6. Question: How do you handle errors in React?
+**Answer**:
+
+```javascript
+// Error Boundary Component
+class ErrorBoundary extends React.Component {
+  state = { hasError: false };
+  
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+  
+  componentDidCatch(error, errorInfo) {
+    logErrorToService(error, errorInfo);
+  }
+  
+  render() {
+    if (this.state.hasError) {
+      return <h1>Something went wrong.</h1>;
+    }
+    return this.props.children;
+  }
+}
+
+// Usage
+function App() {
+  return (
+    <ErrorBoundary>
+      <MyComponent />
+    </ErrorBoundary>
+  );
+}
+```
+
+## Testing
+
+### 7. Question: How do you test React components?
+**Answer**:
+
+```javascript
+// Component to test
+function Counter() {
+  const [count, setCount] = useState(0);
+  return (
+    <div>
+      <span data-testid="count">{count}</span>
+      <button onClick={() => setCount(c => c + 1)}>
+        Increment
+      </button>
+    </div>
+  );
+}
+
+// Test file
+import { render, fireEvent } from '@testing-library/react';
+
+test('counter increments when clicked', () => {
+  const { getByText, getByTestId } = render(<Counter />);
+  const button = getByText('Increment');
+  
+  fireEvent.click(button);
+  
+  expect(getByTestId('count')).toHaveTextContent('1');
+});
+```
+
+## Advanced Patterns
+
+### 8. Question: Explain Render Props pattern
+**Answer**:
+
+```javascript
+// Mouse tracker component using render props
+class MouseTracker extends React.Component {
+  state = { x: 0, y: 0 };
+  
+  handleMouseMove = (event) => {
+    this.setState({
+      x: event.clientX,
+      y: event.clientY
+    });
+  };
+  
+  render() {
+    return (
+      <div onMouseMove={this.handleMouseMove}>
+        {this.props.render(this.state)}
+      </div>
+    );
+  }
+}
+
+// Usage
+<MouseTracker
+  render={({ x, y }) => (
+    <h1>Mouse position: {x}, {y}</h1>
+  )}
+/>
+```
+
+### 9. Question: How do you implement code splitting in React?
+**Answer**:
+
+```javascript
+// Using React.lazy and Suspense
+const OtherComponent = React.lazy(() => import('./OtherComponent'));
+
+function MyComponent() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <OtherComponent />
+    </Suspense>
+  );
+}
+
+// Route-based code splitting
+import { BrowserRouter, Route, Switch } from 'react-router-dom';
+
+const Home = React.lazy(() => import('./routes/Home'));
+const About = React.lazy(() => import('./routes/About'));
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Suspense fallback={<Loading />}>
+        <Switch>
+          <Route exact path="/" component={Home}/>
+          <Route path="/about" component={About}/>
+        </Switch>
+      </Suspense>
+    </BrowserRouter>
+  );
+}
+```
+
+### 10. Question: How do you handle API calls in React?
+**Answer**:
+
+```javascript
+function UserProfile({ userId }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/users/${userId}`);
+        if (!response.ok) throw new Error('Failed to fetch');
+        const data = await response.json();
+        setUser(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, [userId]);
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+  if (!user) return null;
+
+  return (
+    <div>
+      <h1>{user.name}</h1>
+      <p>{user.email}</p>
+    </div>
+  );
+}
+```
+
+## Practical Coding Challenges
+
+### Challenge 1: Implement a debounced search input
+**Task**: Create a search input that only triggers the search after the user stops typing for 300ms.
+
+```javascript
+function DebouncedSearch() {
+  const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedQuery(query);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [query]);
+
+  return (
+    <div>
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search..."
+      />
+      <p>Searching for: {debouncedQuery}</p>
+    </div>
+  );
+}
+```
