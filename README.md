@@ -278,3 +278,361 @@ Remember to:
 - Be familiar with ES6+ features
 - Know how to handle API calls and error states
 - Understand state management patterns
+
+  # React Hooks Interview Guide
+
+## 1. useState Hook
+
+**Question: Explain useState and its use cases**
+
+```javascript
+// Basic usage
+const Counter = () => {
+  const [count, setCount] = useState(0);
+  
+  return (
+    <button onClick={() => setCount(count + 1)}>
+      Count: {count}
+    </button>
+  );
+};
+
+// Object state
+const UserForm = () => {
+  const [user, setUser] = useState({
+    name: '',
+    email: ''
+  });
+
+  // Correct way to update object state
+  const updateName = (name) => {
+    setUser(prevUser => ({
+      ...prevUser,
+      name
+    }));
+  };
+};
+
+// Array state
+const TodoList = () => {
+  const [todos, setTodos] = useState([]);
+
+  const addTodo = (todo) => {
+    setTodos(prevTodos => [...prevTodos, todo]);
+  };
+};
+```
+
+**Key Interview Questions:**
+- What's the difference between class state and useState?
+- Why use the functional update form (prevState => newState)?
+- How to handle multiple related state variables?
+
+## 2. useEffect Hook
+
+**Question: Explain different use cases of useEffect**
+
+```javascript
+const UserProfile = ({ userId }) => {
+  const [user, setUser] = useState(null);
+
+  // Run on mount only
+  useEffect(() => {
+    console.log('Component mounted');
+    return () => console.log('Cleanup on unmount');
+  }, []);
+
+  // Run on dependency change
+  useEffect(() => {
+    const fetchUser = async () => {
+      const response = await fetch(`/api/users/${userId}`);
+      const data = await response.json();
+      setUser(data);
+    };
+
+    fetchUser();
+
+    // Cleanup function
+    return () => {
+      // Cancel any subscriptions/requests
+    };
+  }, [userId]);
+
+  // Run on every render
+  useEffect(() => {
+    document.title = `Profile of ${user?.name}`;
+  });
+};
+```
+
+**Key Interview Questions:**
+- What are the different dependency array scenarios?
+- How does cleanup work?
+- How to handle race conditions in data fetching?
+
+## 3. useCallback Hook
+
+**Question: When and why should you use useCallback?**
+
+```javascript
+const SearchComponent = () => {
+  const [query, setQuery] = useState('');
+
+  const handleSearch = useCallback((searchTerm) => {
+    setQuery(searchTerm);
+    // Expensive search operation
+  }, []); // Empty deps array
+
+  return (
+    <div>
+      <SearchInput onSearch={handleSearch} />
+      <Results query={query} />
+    </div>
+  );
+};
+```
+
+**Key Interview Questions:**
+- What's the performance benefit of useCallback?
+- When should you avoid using useCallback?
+- How does it work with React.memo?
+
+## 4. useMemo Hook
+
+**Question: Explain useMemo and its use cases**
+
+```javascript
+const ExpensiveComponent = ({ data, filter }) => {
+  const expensiveCalculation = useMemo(() => {
+    return data.filter(item => {
+      console.log('Filtering...');
+      return item.value > filter;
+    });
+  }, [data, filter]);
+
+  return (
+    <div>
+      {expensiveCalculation.map(item => (
+        <div key={item.id}>{item.value}</div>
+      ))}
+    </div>
+  );
+};
+```
+
+**Key Interview Questions:**
+- What's the difference between useMemo and useCallback?
+- When should you use useMemo?
+- What are the performance implications?
+
+## 5. useRef Hook
+
+**Question: Explain the different use cases of useRef**
+
+```javascript
+const TextInput = () => {
+  const inputRef = useRef(null);
+  const renderCount = useRef(0);
+
+  useEffect(() => {
+    // Focus input on mount
+    inputRef.current?.focus();
+    
+    // Track renders without causing re-render
+    renderCount.current += 1;
+    console.log(`Rendered ${renderCount.current} times`);
+  });
+
+  return <input ref={inputRef} />;
+};
+```
+
+**Key Interview Questions:**
+- How is useRef different from useState?
+- What are common use cases for useRef?
+- Why use useRef for render counts?
+
+## 6. Custom Hooks
+
+**Question: Create a custom hook for form handling**
+
+```javascript
+const useForm = (initialValues = {}) => {
+  const [values, setValues] = useState(initialValues);
+  const [errors, setErrors] = useState({});
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setValues(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = (onSubmit) => (e) => {
+    e.preventDefault();
+    onSubmit(values);
+  };
+
+  return {
+    values,
+    errors,
+    handleChange,
+    handleSubmit
+  };
+};
+
+// Usage
+const LoginForm = () => {
+  const { values, handleChange, handleSubmit } = useForm({
+    email: '',
+    password: ''
+  });
+
+  const onSubmit = (data) => {
+    console.log('Form submitted:', data);
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <input
+        name="email"
+        value={values.email}
+        onChange={handleChange}
+      />
+      <input
+        name="password"
+        type="password"
+        value={values.password}
+        onChange={handleChange}
+      />
+      <button type="submit">Login</button>
+    </form>
+  );
+};
+```
+
+**Key Interview Questions:**
+- What are the benefits of custom hooks?
+- How to share logic between components?
+- What naming conventions should be followed?
+
+## 7. useReducer Hook
+
+**Question: When would you use useReducer over useState?**
+
+```javascript
+const initialState = {
+  count: 0,
+  error: null,
+  loading: false
+};
+
+function reducer(state, action) {
+  switch (action.type) {
+    case 'increment':
+      return { ...state, count: state.count + 1 };
+    case 'decrement':
+      return { ...state, count: state.count - 1 };
+    case 'setError':
+      return { ...state, error: action.payload };
+    case 'setLoading':
+      return { ...state, loading: action.payload };
+    default:
+      return state;
+  }
+}
+
+const Counter = () => {
+  const [state, dispatch] = useReducer(reducer, initialState);
+
+  return (
+    <div>
+      <p>Count: {state.count}</p>
+      <button onClick={() => dispatch({ type: 'increment' })}>+</button>
+      <button onClick={() => dispatch({ type: 'decrement' })}>-</button>
+    </div>
+  );
+};
+```
+
+**Key Interview Questions:**
+- When is useReducer preferred over useState?
+- How to handle complex state logic?
+- What are the benefits of using reducers?
+
+## Common Hook Mistakes to Avoid
+
+1. **Infinite Loops**
+```javascript
+// Bad
+useEffect(() => {
+  setCount(count + 1);
+}); // Missing dependency array
+
+// Good
+useEffect(() => {
+  setCount(c => c + 1);
+}, []); // Run once on mount
+```
+
+2. **Stale Closures**
+```javascript
+// Bad
+useEffect(() => {
+  const interval = setInterval(() => {
+    setCount(count + 1);
+  }, 1000);
+  return () => clearInterval(interval);
+}, []); // count is stale
+
+// Good
+useEffect(() => {
+  const interval = setInterval(() => {
+    setCount(c => c + 1);
+  }, 1000);
+  return () => clearInterval(interval);
+}, []); // Using functional update
+```
+
+3. **Unnecessary Dependencies**
+```javascript
+// Bad
+const handleClick = useCallback(() => {
+  console.log(props.value);
+}, [props]); // Entire props object as dependency
+
+// Good
+const handleClick = useCallback(() => {
+  console.log(props.value);
+}, [props.value]); // Only the needed value
+```
+
+## Performance Optimization with Hooks
+
+1. **Memoizing Expensive Calculations**
+```javascript
+const MemoizedComponent = memo(({ data }) => {
+  const processedData = useMemo(() => {
+    return expensiveOperation(data);
+  }, [data]);
+
+  return <div>{processedData}</div>;
+});
+```
+
+2. **Optimizing Callbacks**
+```javascript
+const OptimizedList = ({ items }) => {
+  const handleItemClick = useCallback((id) => {
+    console.log(`Item ${id} clicked`);
+  }, []); // Stable callback reference
+
+  return items.map(item => (
+    <Item
+      key={item.id}
+      onClick={handleItemClick}
+    />
+  ));
+};
+```
